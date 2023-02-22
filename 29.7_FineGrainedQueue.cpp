@@ -26,34 +26,44 @@ class FineGrainedQueue
 public:
     void insertIntoMiddle(T value, int pos) {
         Node* head_, * tail_;// указатели на предыдущий и текущий элемент
+        queue_mutex->lock();// head нельзя будет изменить
+        
         head_ = this->head; 
         tail_ = this->head->next;
+
+        head_->node_mutex->lock(); //закрытие head
+
         int count = 0;
+        Node<T> newNode;
+        newNode.value = value;
+        newNode.next = nullptr;
 
-        head_->node_mutex->lock();
-        tail_->node_mutex->lock();
+        queue_mutex->unlock(); // теперь можно открыть всю очередь
+        
+        if (tail_) //проверка, не явл head последним элементом
+        {
+            tail_->node_mutex->lock();
+        }else
+        {
+            
+        }
 
-        while (tail_) // пока указатель на текущий элемент не нулевой
+        
+        while (tail_) // пока указатель на следующий элемент не нулевой
         {
             if (count == pos)
             {
-                queue_mutex->lock();
-
-                Node<T> newNode;
-
-                newNode.value = value;
+             
                 newNode.next = tail_;
                 tail_ = *newNode;
 
                 head_->node_mutex->unlock();
                 tail_->node_mutex->unlock();
-
-                queue_mutex->unlock();
-                
+                                
                 return;
             }
 
-            // если не нашли элемент для удаления, то двигаемся дальше по очереди
+            // если не нашли элемент для вставки, то двигаемся дальше по очереди
             Node* oldHead_ = head_;
             head_ = tail_;
             tail_ = head_->next;
@@ -63,17 +73,11 @@ public:
 
             count++;
         }
-        queue_mutex->lock();
 
-        Node<T> newNode;
+        tail_ = *newNode;//если  номер места вставки не найден,то вставляем элемент последним  
 
-        newNode.value = value;
-        newNode.next = nullptr;
-        tail_ = *newNode;
-
-        queue_mutex->unlock();
         head_->node_mutex->unlock();
-        tail_->node_mutex->unlock();
+        
    }
 };
 
